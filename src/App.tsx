@@ -88,7 +88,13 @@ export default function App(){
       <div className="rows">{items.map(i=><div className="row" key={i.id}>
         <div className="fileIcon">{ext(i.file.name).toUpperCase()}</div>
         <div className="meta"><strong>{i.file.name}</strong><span>{i.encoding ? `Detectat: ${i.encoding}` : i.error || 'Eroare'}</span></div>
-        <div className={`status ${i.status}`}>{i.status==='converted'?'UTF‑8':i.status==='error'?'!':'Pregătit'}</div>
+        <div className={`status ${i.status}`}>
+  {i.status === 'converted'
+    ? `${i.encoding || 'Detectat'} → UTF-8 ✓`
+    : i.status === 'error'
+    ? '!'
+    : 'Pregătit'}
+</div>
         <button className="round" aria-label="Remove" onClick={()=>setItems(p=>p.filter(x=>x.id!==i.id))}>×</button>
         {i.status==='converted' && <><button className="small" onClick={()=>setPreview(i)}>Preview</button><button className="small" onClick={()=>save(i)}>Salvează</button></>}
       </div>)}</div>
@@ -96,8 +102,14 @@ export default function App(){
 
     {items.length>0 && <section className="card controls">
       <label className="toggle"><div><strong>Repară diacritice românești</strong><span>Repară automat caracterele românești afișate greșit.</span></div><input type="checkbox" checked={repair} onChange={e=>setRepair(e.target.checked)}/><i/></label>
-      <button className="primary wide" onClick={convertAll}>Convertește în UTF‑8</button>
-      {convertedCount>1 && <button className="secondary wide" onClick={exportZip}>Exportă toate ca ZIP</button>}
+      <div className="fileNameNotice">
+  <strong>Atenție:</strong> fișierele convertite vor păstra același nume ca fișierele originale.
+  Verifică să nu le suprascrii accidental atunci când le salvezi.
+</div>
+      <button className="primary wide" onClick={convertAll}>
+  Convertește toate în UTF-8
+</button>
+      {convertedCount>1 && <button className="secondary wide" onClick={exportZip}>Descarcă toate ca ZIP</button>}
     </section>}
 
     <section className="note"><strong>100% privat.</strong> Fișierele nu părăsesc telefonul și nu sunt încărcate pe niciun server.</section>
