@@ -1,0 +1,206 @@
+/* SubUTF8 – banner de instalare iPhone
+   Nu schimbă layout-ul existent al site-ului. Adaugă doar bannerul și modalul. */
+
+.subutf8-install-banner {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: 9999;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: #111;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+.subutf8-install-banner__top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.subutf8-install-banner__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.subutf8-install-banner__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.subutf8-install-banner__title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.subutf8-install-banner__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #6e6e73;
+}
+
+.subutf8-install-banner__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #6e6e73;
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+
+.subutf8-install-banner__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.subutf8-install-banner__btn {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 0;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subutf8-install-banner__btn--later {
+  background: #f2f2f7;
+  color: #1d1d1f;
+}
+
+.subutf8-install-banner__btn--install {
+  background: #0a84ff;
+  color: white;
+}
+
+/* Modal */
+.subutf8-install-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.42);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+.subutf8-install-modal__sheet {
+  width: min(100%, 560px);
+  border-radius: 24px;
+  background: #fff;
+  color: #111;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.subutf8-install-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.subutf8-install-modal__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.subutf8-install-modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #6e6e73;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.subutf8-install-step {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.subutf8-install-step__num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0a84ff;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.subutf8-install-step__content strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.subutf8-install-step__content p {
+  margin: 0;
+  color: #6e6e73;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.subutf8-install-tip {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(10,132,255,0.08);
+  color: #1d1d1f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  .subutf8-install-banner,
+  .subutf8-install-modal__sheet {
+    background: rgba(28,28,30,0.96);
+    color: #fff;
+    border-color: rgba(255,255,255,0.08);
+  }
+
+  .subutf8-install-banner__text,
+  .subutf8-install-step__content p,
+  .subutf8-install-banner__close,
+  .subutf8-install-modal__close {
+    color: #a1a1a6;
+  }
+
+  .subutf8-install-banner__btn--later {
+    background: #2c2c2e;
+    color: #fff;
+  }
+
+  .subutf8-install-tip {
+    background: rgba(10,132,255,0.14);
+    color: #fff;
+  }
+}
