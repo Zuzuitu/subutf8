@@ -62,7 +62,7 @@ export default function App(){
     />
 
     <p className="heroDescription">
-      Transformă subtitrările vechi în UTF-8, repară caracterele românești afișate greșit
+      Transformă subtitrările în UTF-8, repară caracterele românești afișate greșit
       și procesează mai multe fișiere direct pe dispozitiv.
     </p>
 
