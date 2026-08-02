@@ -73,7 +73,7 @@ export default function App(){
     </section>}
 
     {items.length>0 && <section className="card controls">
-      <label className="toggle"><div><strong>Repară diacritice românești</strong><span>Corectează automat mojibake precum ÅŸ → ș și Å£ → ț.</span></div><input type="checkbox" checked={repair} onChange={e=>setRepair(e.target.checked)}/><i/></label>
+      <label className="toggle"><div><strong>Repară diacritice românești</strong><span>Repară automat caracterele românești afișate greșit.</span></div><input type="checkbox" checked={repair} onChange={e=>setRepair(e.target.checked)}/><i/></label>
       <button className="primary wide" onClick={convertAll}>Convertește în UTF‑8</button>
       {convertedCount>1 && <button className="secondary wide" onClick={exportZip}>Exportă toate ca ZIP</button>}
     </section>}
