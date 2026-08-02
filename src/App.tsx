@@ -112,7 +112,7 @@ export default function App(){
       {convertedCount>1 && <button className="secondary wide" onClick={exportZip}>Descarcă toate ca ZIP</button>}
     </section>}
 
-    <section className="note"><strong>100% privat.</strong> Fișierele nu părăsesc telefonul și nu sunt încărcate pe niciun server.</section>
+    <section className="note"><strong>100% privat.</strong> Fișierele sunt procesate local pe dispozitiv și nu sunt încărcate pe niciun server.</section>
     <footer>SubUTF8 · pentru subtitrări text. Fișierele .sub/.idx și .sup bazate pe imagini necesită OCR și nu sunt incluse.</footer>
 
     {preview && <div className="modal" onClick={()=>setPreview(null)}><div className="sheet" onClick={e=>e.stopPropagation()}><div className="grab"/><div className="sectionTitle"><h2>{preview.file.name}</h2><button className="round" onClick={()=>setPreview(null)}>×</button></div><pre>{preview.converted}</pre></div></div>}
