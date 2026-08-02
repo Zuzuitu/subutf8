@@ -1,0 +1,114 @@
+/* SubUTF8 – stiluri aplicate doar când site-ul este instalat ca PWA */
+@media (display-mode: standalone) {
+  :root {
+    background: #f5f5f7;
+  }
+
+  body {
+    background: #f5f5f7;
+    overscroll-behavior-y: none;
+  }
+
+  .shell {
+    max-width: 760px;
+    padding:
+      calc(18px + env(safe-area-inset-top))
+      14px
+      calc(30px + env(safe-area-inset-bottom));
+  }
+
+  header,
+  .heroHeader {
+    margin: 8px 2px 18px;
+    gap: 14px;
+  }
+
+  .brandLogo {
+    width: min(330px, 88%) !important;
+    margin-bottom: 10px !important;
+  }
+
+  .heroDescription {
+    font-size: 15px !important;
+    line-height: 1.42 !important;
+  }
+
+  .heroDescriptionEn {
+    margin-top: 5px !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    opacity: .82;
+  }
+
+  .privacy {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+
+  .card {
+    border-radius: 22px;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.04);
+  }
+
+  .drop {
+    padding: 28px 16px;
+  }
+
+  .drop .icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 17px;
+    margin-bottom: 12px;
+  }
+
+  .drop h2 {
+    font-size: 22px;
+  }
+
+  .drop p {
+    margin: 7px auto 16px;
+    max-width: 520px;
+  }
+
+  .primary,
+  .secondary {
+    min-height: 50px;
+    border-radius: 15px;
+    font-size: 16px;
+    font-weight: 750;
+  }
+
+  .row {
+    border-radius: 16px;
+  }
+
+  .controls {
+    padding: 15px;
+  }
+
+  .fileNameNotice {
+    margin: 14px 0 4px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,149,0,.08);
+    border: 1px solid rgba(255,149,0,.20);
+    color: #6b4a00;
+    font-size: 13px;
+    line-height: 1.42;
+  }
+
+  .note {
+    padding-bottom: 10px;
+  }
+}
+
+/* iPhone PWA in dark mode */
+@media (display-mode: standalone) and (prefers-color-scheme: dark) {
+  :root, body { background: #000; }
+  .fileNameNotice {
+    background: rgba(255,159,10,.12);
+    border-color: rgba(255,159,10,.24);
+    color: #ffd28a;
+  }
+}
