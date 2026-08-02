@@ -46,7 +46,7 @@
         </div>
 
         <div class="subutf8-install-tip">
-          <strong>Sfat:</strong> bifează „Apri come web app” pentru ca SubUTF8 să se deschidă ca aplicație, fără bara Safari.
+          <strong>Sfat:</strong> bifează „Deschide ca aplicație web” pentru ca SubUTF8 să se deschidă ca aplicație, fără bara Safari.
         </div>
       </div>
     `;
