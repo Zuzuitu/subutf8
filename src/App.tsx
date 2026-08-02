@@ -53,7 +53,29 @@ export default function App(){
   }
 
   return <main className="shell">
-    <header><div><div className="eyebrow">OFFLINE SUBTITLE TOOL</div><h1>SubUTF8</h1><p>Transformă subtitrările vechi în UTF‑8, direct pe dispozitiv.</p></div><div className="privacy">◉ Procesare locală</div></header>
+    <header className="heroHeader">
+  <div className="brandBlock">
+    <img
+      src="/logo-subutf8.png"
+      alt="SubUTF8 by alexlab.media"
+      className="brandLogo"
+    />
+
+    <p className="heroDescription">
+      Transformă subtitrările vechi în UTF-8, repară caracterele românești afișate greșit
+      și procesează mai multe fișiere direct pe dispozitiv.
+    </p>
+
+    <p className="heroDescriptionEn">
+      Convert subtitle files to UTF-8, repair broken Romanian characters,
+      and process multiple files instantly — entirely on your device.
+    </p>
+  </div>
+
+  <div className="privacy">
+    ◉ Procesare locală
+  </div>
+</header>
 
     <section className="card drop" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();addFiles(e.dataTransfer.files)}}>
       <div className="icon">↥</div><h2>Importă subtitrări</h2><p>.srt .sub .ass .ssa .vtt .smi .txt · poți selecta mai multe fișiere</p>
