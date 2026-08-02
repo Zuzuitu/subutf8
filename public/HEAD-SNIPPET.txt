@@ -1,0 +1,15 @@
+<!-- SubUTF8 PWA -->
+<link rel="icon" type="image/png" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="stylesheet" href="/pwa.css" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="SubUTF8" />
+
+<link rel="apple-touch-startup-image" href="/splash-iphone-14pro.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" />
+<link rel="apple-touch-startup-image" href="/splash-iphone-12-13-14.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+<link rel="apple-touch-startup-image" href="/splash-iphone-14promax.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
+
+<script defer src="/pwa-mode.js"></script>

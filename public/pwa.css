@@ -1,12 +1,18 @@
-/* SubUTF8 – stiluri aplicate doar când site-ul este instalat ca PWA */
+/* SubUTF8 PWA polish – active only when installed as a web app */
 @media (display-mode: standalone) {
-  :root {
+  html, body {
     background: #f5f5f7;
+    min-height: 100%;
+    overscroll-behavior-y: none;
   }
 
   body {
-    background: #f5f5f7;
-    overscroll-behavior-y: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
   }
 
   .shell {
@@ -14,7 +20,7 @@
     padding:
       calc(18px + env(safe-area-inset-top))
       14px
-      calc(30px + env(safe-area-inset-bottom));
+      calc(28px + env(safe-area-inset-bottom));
   }
 
   header,
@@ -43,6 +49,7 @@
   .privacy {
     font-size: 11px;
     padding: 8px 10px;
+    border-radius: 999px;
   }
 
   .card {
@@ -53,6 +60,12 @@
 
   .drop {
     padding: 28px 16px;
+    border-radius: 20px;
+    transition: transform .16s ease, box-shadow .16s ease;
+  }
+
+  .drop:active {
+    transform: scale(.995);
   }
 
   .drop .icon {
@@ -64,6 +77,7 @@
 
   .drop h2 {
     font-size: 22px;
+    letter-spacing: -.02em;
   }
 
   .drop p {
@@ -77,6 +91,12 @@
     border-radius: 15px;
     font-size: 16px;
     font-weight: 750;
+    transition: transform .12s ease, opacity .12s ease;
+  }
+
+  .primary:active,
+  .secondary:active {
+    transform: scale(.985);
   }
 
   .row {
@@ -97,15 +117,10 @@
     font-size: 13px;
     line-height: 1.42;
   }
-
-  .note {
-    padding-bottom: 10px;
-  }
 }
 
-/* iPhone PWA in dark mode */
 @media (display-mode: standalone) and (prefers-color-scheme: dark) {
-  :root, body { background: #000; }
+  html, body { background: #000; }
   .fileNameNotice {
     background: rgba(255,159,10,.12);
     border-color: rgba(255,159,10,.24);
