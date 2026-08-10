@@ -582,7 +582,7 @@ export default function App() {
               🍺
             </span>
 
-            Offrimi una birra
+            Fă-mi cinste cu o bere
           </a>
         </div>
       </section>
