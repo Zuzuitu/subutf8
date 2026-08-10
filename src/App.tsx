@@ -112,6 +112,54 @@ export default function App(){
       {convertedCount>1 && <button className="secondary wide" onClick={exportZip}>Descarcă toate ca ZIP</button>}
     </section>}
 
+    <section className="supportCard">
+  <div className="supportIcon" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="25"
+      height="25"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+    </svg>
+  </div>
+
+  <div className="supportContent">
+    <div className="supportLabel">Susține SubUTF8</div>
+
+    <h3>Îți este util SubUTF8?</h3>
+
+    <p>
+      Dacă folosești des site-ul sau aplicația și consideri că proiectul
+      merită susținut, poți dona orice sumă dorești. Este complet opțional,
+      dar este o modalitate simplă de a-mi arăta că apreciezi munca depusă.
+    </p>
+
+    <a
+      className="paypalButton"
+      href="https://www.paypal.me/AlexandruCiobanu00"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M7.1 3.2h6.1c3.8 0 6 1.9 6 5 0 4-3.2 6.4-7.6 6.4H9.8l-.9 5.2H5L7.1 3.2Z" />
+      </svg>
+
+      Donează prin PayPal
+    </a>
+  </div>
+</section>
+    
     <section className="note"><strong>100% privat.</strong> Fișierele sunt procesate local pe dispozitiv și nu sunt încărcate pe niciun server.</section>
     <footer>SubUTF8 · pentru subtitrări text. Fișierele .sub/.idx și .sup bazate pe imagini necesită OCR și nu sunt incluse.</footer>
 
