@@ -1,4 +1,4 @@
-# SubUTF8
+# SubUTF8 (srt.alexlab.media)
 
 Offline, mobile-first subtitle/text encoding converter designed for iOS via Capacitor.
 
