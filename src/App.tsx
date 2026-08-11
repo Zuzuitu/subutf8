@@ -380,11 +380,11 @@ export default function App() {
         </p>
 
         <button
-          className="primary"
-          onClick={() => inputRef.current?.click()}
-        >
-          Alege fișiere
-        </button>
+  className="primary filePickerButton"
+  onClick={() => inputRef.current?.click()}
+>
+  Alege fișiere
+</button>
 
         <input
           ref={inputRef}
