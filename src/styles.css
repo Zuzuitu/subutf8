@@ -116,6 +116,11 @@ p{
   font-weight:750;
 }
 
+.filePickerButton{
+  border:1px solid rgba(255,201,0,.85);
+  box-shadow:0 2px 8px rgba(255,201,0,.10);
+}
+
 .secondary{
   background:#ececf0;
   color:#19191c;
