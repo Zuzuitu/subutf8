@@ -184,6 +184,25 @@ function repairRomanianCharacters(text: string) {
   return result;
 }
 
+function convertItem(
+  item: SubtitleItem,
+  repairRomanian: boolean,
+): SubtitleItem {
+  if (item.status === 'error') {
+    return item;
+  }
+
+  const convertedText = repairRomanian
+    ? repairRomanianCharacters(item.text)
+    : item.text;
+
+  return {
+    ...item,
+    convertedText,
+    status: 'converted',
+  };
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -202,6 +221,7 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [items, setItems] = useState<SubtitleItem[]>([]);
+  const [autoConvert, setAutoConvert] = useState(true);
   const [repairRomanian, setRepairRomanian] =
     useState(true);
 
@@ -231,7 +251,7 @@ export default function App() {
 
           const result = detectAndDecode(bytes);
 
-          return {
+          const item: SubtitleItem = {
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
             file,
             name: file.name,
@@ -240,6 +260,10 @@ export default function App() {
             text: result.text,
             status: 'ready',
           };
+
+          return autoConvert
+            ? convertItem(item, repairRomanian)
+            : item;
         } catch {
           return {
             id: `${file.name}-${Math.random()}`,
@@ -260,22 +284,24 @@ export default function App() {
 
   function convertAll() {
     setItems((current) =>
-      current.map((item) => {
-        if (item.status === 'error') {
-          return item;
-        }
-
-        const convertedText = repairRomanian
-          ? repairRomanianCharacters(item.text)
-          : item.text;
-
-        return {
-          ...item,
-          convertedText,
-          status: 'converted',
-        };
-      }),
+      current.map((item) =>
+        convertItem(item, repairRomanian),
+      ),
     );
+  }
+
+  function handleAutoConvertChange(enabled: boolean) {
+    setAutoConvert(enabled);
+
+    if (enabled) {
+      setItems((current) =>
+        current.map((item) =>
+          item.status === 'ready'
+            ? convertItem(item, repairRomanian)
+            : item,
+        ),
+      );
+    }
   }
 
   function removeItem(id: string) {
@@ -379,12 +405,44 @@ export default function App() {
           selecta mai multe fișiere
         </p>
 
+        <label
+          className="toggle"
+          style={{
+            maxWidth: 430,
+            margin: '0 auto 18px',
+            textAlign: 'left',
+          }}
+        >
+          <div>
+            <strong>
+              Conversie automată în UTF-8
+            </strong>
+
+            <span>
+              Convertește automat imediat după selectarea
+              fișierelor.
+            </span>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={autoConvert}
+            onChange={(event) =>
+              handleAutoConvertChange(
+                event.target.checked,
+              )
+            }
+          />
+
+          <i />
+        </label>
+
         <button
-  className="primary filePickerButton"
-  onClick={() => inputRef.current?.click()}
->
-  Alege fișiere
-</button>
+          className="primary filePickerButton"
+          onClick={() => inputRef.current?.click()}
+        >
+          Alege fișiere
+        </button>
 
         <input
           ref={inputRef}
