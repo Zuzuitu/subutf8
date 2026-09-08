@@ -183,8 +183,8 @@ Then select an Apple Development Team in Xcode and configure signing as needed.
 - TypeScript
 - Vite
 - Capacitor
+- browser-native `TextDecoder` / `TextEncoder` for subtitle text decoding and UTF-8 output
 - `fflate` for ZIP generation
-- `iconv-lite` / browser decoding support for legacy text encodings
 - Cloudflare Pages for the public web deployment
 
 ## Security
