@@ -10,10 +10,25 @@ export default defineConfig({
       manifest: {
         name: 'SubUTF8',
         short_name: 'SubUTF8',
-        description: 'Offline subtitle UTF-8 converter and resync tool',
+        description: 'Convertește subtitrările în UTF-8 și resincronizează timpii direct pe dispozitiv.',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         background_color: '#f5f5f7',
-        theme_color: '#0a84ff'
+        theme_color: '#f5f5f7',
+        lang: 'ro',
+        icons: [
+          {
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
       }
     })
   ]
