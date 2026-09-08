@@ -3,7 +3,7 @@
 
 # SubUTF8
 
-**Convert subtitle files to UTF-8, repair broken Romanian characters, and process multiple files locally on your device.**
+**Convert subtitle files to UTF-8, repair broken Romanian characters, and resync subtitle timing locally on your device.**
 
 [![Live](https://img.shields.io/badge/live-srt.alexlab.media-0A84FF)](https://srt.alexlab.media)
 [![PWA](https://img.shields.io/badge/PWA-installable-34C759)](https://srt.alexlab.media)
@@ -18,11 +18,14 @@
 
 ## What is SubUTF8?
 
-SubUTF8 is a lightweight, mobile-first subtitle encoding converter built for quick use on iPhone, Android, tablet and desktop.
+SubUTF8 is a lightweight, mobile-first subtitle utility built for quick use on iPhone, Android, tablet and desktop.
 
-Its main purpose is simple: take subtitle text files that use legacy encodings or contain incorrectly displayed Romanian characters and produce clean UTF-8 files without changing subtitle timing or structure.
+It provides two local tools:
 
-All conversion happens locally in the browser. Subtitle contents are not uploaded to an alexlab.media server.
+- **UTF-8 conversion** for subtitle text files that use legacy encodings or contain incorrectly displayed Romanian characters;
+- **subtitle resync** for moving every supported timing cue earlier or later by a millisecond offset.
+
+All processing happens locally in the browser. Subtitle contents are not uploaded to an alexlab.media server.
 
 ## Features
 
@@ -31,8 +34,16 @@ All conversion happens locally in the browser. Subtitle contents are not uploade
 - UTF-8 conversion while preserving subtitle structure and timestamps
 - Automatic repair for incorrectly displayed Romanian characters
 - Legacy Romanian `ş` / `ţ` normalization to `ș` / `ț`
+- Optional automatic conversion immediately after file selection
+- Subtitle resync with positive or negative millisecond offsets
+- Quick resync controls for ±100, ±500 and ±1000 ms
+- SRT and WebVTT millisecond timing support
+- ASS / SSA timing support
+- SMI timing support
+- Text `.sub` resync for MicroDVD and SubViewer formats
+- MicroDVD FPS handling, including embedded FPS metadata when present
 - Individual file download
-- Batch ZIP export
+- Batch ZIP export with duplicate filename protection
 - Original filenames are preserved
 - Local, browser-side processing
 - Installable PWA for an app-like experience
@@ -41,19 +52,36 @@ All conversion happens locally in the browser. Subtitle contents are not uploade
 
 ## Supported text subtitle formats
 
-| Format | Support |
-| --- | --- |
-| `.srt` | ✅ |
-| `.sub` (text-based) | ✅ |
-| `.ass` | ✅ |
-| `.ssa` | ✅ |
-| `.vtt` | ✅ |
-| `.smi` | ✅ |
-| `.txt` | ✅ |
+| Format | UTF-8 conversion | Resync |
+| --- | --- | --- |
+| `.srt` | ✅ | ✅ |
+| `.sub` (text-based) | ✅ | ✅ MicroDVD / SubViewer |
+| `.ass` | ✅ | ✅ |
+| `.ssa` | ✅ | ✅ |
+| `.vtt` | ✅ | ✅ |
+| `.smi` | ✅ | ✅ |
+| `.txt` | ✅ | — |
 
 ### Image-based subtitles
 
-`.sub/.idx` (VobSub) and `.sup` / PGS subtitles are image-based formats and require OCR. They are intentionally outside the scope of SubUTF8.
+`.sub/.idx` (VobSub) and `.sup` / PGS subtitles are image-based formats and require OCR. They are intentionally outside the scope of SubUTF8. The app rejects subtitle data that appears to be binary instead of text.
+
+## Subtitle resync
+
+The **Resync** tab applies one offset to every timing cue in the selected subtitle files.
+
+Examples:
+
+```text
++1000 ms = subtitles appear 1 second later
+-1000 ms = subtitles appear 1 second earlier
++2500 ms = subtitles appear 2.5 seconds later
+-350 ms  = subtitles appear 0.35 seconds earlier
+```
+
+**1 second = 1000 milliseconds.**
+
+SRT and VTT preserve millisecond precision. ASS/SSA and some text `.sub` variants use coarser timing precision. MicroDVD `.sub` files are frame-based, so SubUTF8 converts the millisecond offset to frames using the embedded FPS value when available or the FPS selected by the user. Timing values that would become negative are clamped to zero.
 
 ## Encoding support
 
@@ -63,6 +91,7 @@ SubUTF8 handles or detects common subtitle encodings including:
 - UTF-8 with BOM
 - UTF-16 LE
 - UTF-16 BE
+- BOM-less UTF-16 LE / BE when the byte pattern can be identified reliably
 - Windows-1250
 - Windows-1252
 - ISO-8859-2
@@ -71,7 +100,7 @@ The converter then outputs UTF-8 encoded text.
 
 ## Romanian character repair
 
-The optional repair pass fixes common incorrectly displayed Romanian text, including mappings such as:
+The conversion pass fixes common incorrectly displayed Romanian text, including mappings such as:
 
 ```text
 ÅŸ → ș
@@ -90,7 +119,7 @@ SubUTF8 was designed around local processing:
 
 - files are read directly by the browser;
 - subtitle contents are processed on the user's device;
-- converted files are generated locally;
+- converted and resynced files are generated locally;
 - no account is required;
 - no subtitle upload API is required.
 
@@ -159,6 +188,8 @@ Then select an Apple Development Team in Xcode and configure signing as needed.
 - Cloudflare Pages for the public web deployment
 
 ## Security
+
+SubUTF8 does not render uploaded subtitle text as HTML and does not send subtitle contents to a remote API. ZIP filenames are sanitized before archive creation, binary-looking subtitle files are rejected, and very large inputs are limited to reduce accidental browser resource exhaustion.
 
 Please see [SECURITY.md](SECURITY.md) for responsible vulnerability reporting.
 
