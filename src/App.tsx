@@ -1159,7 +1159,7 @@ export default function App() {
             }}
           >
             <div className="resyncIcon">↔</div>
-            <h2>Resync subtitrare</h2>
+            <h2>Ajustare timp subtitrare</h2>
             <p>
               Mută toate marcajele de timp înainte sau înapoi cu un
               offset în milisecunde.
