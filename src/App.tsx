@@ -874,41 +874,41 @@ export default function App() {
     let successCount = 0;
     let failureCount = 0;
 
-    setResyncItems((current) =>
-      current.map((item) => {
-        if (item.readError) {
-          failureCount += 1;
-          return item;
-        }
+    const nextItems = resyncItems.map((item) => {
+      if (item.readError) {
+        failureCount += 1;
+        return item;
+      }
 
-        const result = shiftSubtitleText(
-          item.text,
-          item.extension,
-          offset,
-          fps,
-        );
+      const result = shiftSubtitleText(
+        item.text,
+        item.extension,
+        offset,
+        fps,
+      );
 
-        if (result.error || result.timingCount === 0) {
-          failureCount += 1;
-          return {
-            ...item,
-            shiftedText: undefined,
-            timingCount: undefined,
-            error:
-              result.error ??
-              'Nu am găsit marcaje de timp compatibile în acest fișier.',
-          };
-        }
-
-        successCount += 1;
+      if (result.error || result.timingCount === 0) {
+        failureCount += 1;
         return {
           ...item,
-          shiftedText: result.text,
-          timingCount: result.timingCount,
-          error: undefined,
+          shiftedText: undefined,
+          timingCount: undefined,
+          error:
+            result.error ??
+            'Nu am găsit marcaje de timp compatibile în acest fișier.',
         };
-      }),
-    );
+      }
+
+      successCount += 1;
+      return {
+        ...item,
+        shiftedText: result.text,
+        timingCount: result.timingCount,
+        error: undefined,
+      };
+    });
+
+    setResyncItems(nextItems);
 
     if (successCount > 0) {
       setResyncMessage(
