@@ -1002,7 +1002,7 @@ export default function App() {
           aria-pressed={activeTool === 'resync'}
           onClick={() => setActiveTool('resync')}
         >
-          Resync
+          Decalare
         </button>
       </nav>
 
