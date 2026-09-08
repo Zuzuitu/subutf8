@@ -76,6 +76,7 @@ p{
 }
 
 .drop{
+  position:relative;
   text-align:center;
   padding:36px 20px;
 }
@@ -310,6 +311,21 @@ p{
   transform:translateX(19px);
 }
 
+.autoToggleCompact{
+  position:absolute;
+  top:14px;
+  right:14px;
+  gap:8px;
+  z-index:1;
+  cursor:pointer;
+}
+
+.autoToggleCompact strong{
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
 .note{
   font-size:13px;
   color:#6e6e73;
@@ -525,6 +541,16 @@ footer{
 
   h1{
     font-size:40px;
+  }
+
+  .autoToggleCompact{
+    top:12px;
+    right:12px;
+    gap:7px;
+  }
+
+  .autoToggleCompact strong{
+    font-size:11px;
   }
 
   .row{
