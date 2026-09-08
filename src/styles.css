@@ -487,6 +487,11 @@ p{
   line-height:1.4;
 }
 
+.resyncMessage.success{
+  background:#e9f7ee;
+  color:#14783b;
+}
+
 .resyncHint{
   max-width:690px;
   margin:0 auto 8px;
@@ -829,6 +834,11 @@ footer{
   .resyncMessage{
     background:#0d2c4b;
     color:#80bfff;
+  }
+
+  .resyncMessage.success{
+    background:#0d2d18;
+    color:#59d47c;
   }
 
   .sheet{background:#1c1c1e;}
