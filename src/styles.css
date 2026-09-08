@@ -156,8 +156,8 @@ p{
 }
 
 .filePickerButton{
-  border:1px solid rgba(255,201,0,.85);
-  box-shadow:0 2px 8px rgba(255,201,0,.10);
+  border:1.2px solid #f3a000;
+  box-shadow:0 2px 8px rgba(243,160,0,.18);
 }
 
 .secondary{
