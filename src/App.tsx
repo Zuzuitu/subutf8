@@ -227,6 +227,11 @@ export default function App() {
     [items],
   );
 
+  const hasReadyItems = useMemo(
+    () => items.some((item) => item.status === 'ready'),
+    [items],
+  );
+
   async function addFiles(files: FileList | File[]) {
     const selected = Array.from(files);
 
@@ -385,33 +390,8 @@ export default function App() {
           }
         }}
       >
-        <div className="icon">↥</div>
-
-        <h2>Importă subtitrări</h2>
-
-        <p>
-          .srt .sub .ass .ssa .vtt .smi .txt · poți
-          selecta mai multe fișiere
-        </p>
-
-        <label
-          className="toggle"
-          style={{
-            maxWidth: 430,
-            margin: '0 auto 18px',
-            textAlign: 'left',
-          }}
-        >
-          <div>
-            <strong>
-              Conversie automată + reparare diacritice
-            </strong>
-
-            <span>
-              Convertește automat în UTF-8 și repară
-              caracterele românești afișate greșit.
-            </span>
-          </div>
+        <label className="toggle autoToggleCompact">
+          <strong>Conversie automată</strong>
 
           <input
             type="checkbox"
@@ -425,6 +405,15 @@ export default function App() {
 
           <i />
         </label>
+
+        <div className="icon">↥</div>
+
+        <h2>Importă subtitrări</h2>
+
+        <p>
+          .srt .sub .ass .ssa .vtt .smi .txt · poți
+          selecta mai multe fișiere
+        </p>
 
         <button
           className="primary filePickerButton"
@@ -540,12 +529,14 @@ export default function App() {
               salvezi.
             </div>
 
-            <button
-              className="primary wide"
-              onClick={convertAll}
-            >
-              Convertește toate în UTF-8
-            </button>
+            {!autoConvert && hasReadyItems && (
+              <button
+                className="primary wide"
+                onClick={convertAll}
+              >
+                Convertește toate în UTF-8
+              </button>
+            )}
 
             {convertedCount > 1 && (
               <button
