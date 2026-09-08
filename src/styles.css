@@ -387,6 +387,22 @@ p{
   font-size:14px;
 }
 
+.shell:has(> .resyncDrop){
+  display:flex;
+  flex-direction:column;
+}
+
+.shell:has(> .resyncDrop) > .heroHeader{order:0;}
+.shell:has(> .resyncDrop) > .toolTabs{order:1;}
+.shell:has(> .resyncDrop) > .resyncDrop{order:2;}
+.shell:has(> .resyncDrop) > .resyncDrop + .resyncControls + .card{order:3;}
+.shell:has(> .resyncDrop) > .resyncControls{order:4;}
+.shell:has(> .resyncDrop) > .resyncHint{order:5;}
+.shell:has(> .resyncDrop) > .supportCard{order:6;}
+.shell:has(> .resyncDrop) > .note{order:7;}
+.shell:has(> .resyncDrop) > footer{order:8;}
+.shell:has(> .resyncDrop) > .modal{order:9;}
+
 .resyncControls{padding:18px;}
 
 .offsetHeader{
