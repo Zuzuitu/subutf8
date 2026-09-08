@@ -394,6 +394,38 @@ export default function App() {
           selecta mai multe fișiere
         </p>
 
+        <label
+          className="toggle"
+          style={{
+            maxWidth: 430,
+            margin: '0 auto 18px',
+            textAlign: 'left',
+          }}
+        >
+          <div>
+            <strong>
+              Conversie automată + reparare diacritice
+            </strong>
+
+            <span>
+              Convertește automat în UTF-8 și repară
+              caracterele românești afișate greșit.
+            </span>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={autoConvert}
+            onChange={(event) =>
+              handleAutoConvertChange(
+                event.target.checked,
+              )
+            }
+          />
+
+          <i />
+        </label>
+
         <button
           className="primary filePickerButton"
           onClick={() => inputRef.current?.click()}
@@ -500,31 +532,6 @@ export default function App() {
           </section>
 
           <section className="card controls">
-            <label className="toggle">
-              <div>
-                <strong>
-                  Conversie automată + reparare diacritice
-                </strong>
-
-                <span>
-                  Convertește automat în UTF-8 și repară
-                  caracterele românești afișate greșit.
-                </span>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={autoConvert}
-                onChange={(event) =>
-                  handleAutoConvertChange(
-                    event.target.checked,
-                  )
-                }
-              />
-
-              <i />
-            </label>
-
             <div className="fileNameNotice">
               <strong>Atenție:</strong> fișierele
               convertite vor păstra același nume ca
