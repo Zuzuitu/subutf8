@@ -10,7 +10,7 @@ export default defineConfig({
       manifest: {
         name: 'SubUTF8',
         short_name: 'SubUTF8',
-        description: 'Offline subtitle encoding converter',
+        description: 'Offline subtitle UTF-8 converter and resync tool',
         display: 'standalone',
         background_color: '#f5f5f7',
         theme_color: '#0a84ff'
