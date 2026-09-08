@@ -105,8 +105,8 @@ function detectUtf16WithoutBom(bytes: Uint8Array) {
 
 function textScore(text: string) {
   let score = 0;
-
-  const romanian = text.match(/[ăâîșțĂÂÎȘȚşţŞŢ]/g)?.length ?? 0;
+  const romanian =
+    text.match(/[ăâîșțĂÂÎȘȚşţŞŢ]/g)?.length ?? 0;
   const broken =
     text.match(/ÅŸ|Å£|Åž|Å¢|Äƒ|Ä‚|Ã¢|Ã‚|Ã®|ÃŽ|�/g)?.length ?? 0;
   const controls =
@@ -115,7 +115,6 @@ function textScore(text: string) {
   score += romanian * 5;
   score -= broken * 8;
   score -= controls * 10;
-
   return score;
 }
 
@@ -312,8 +311,7 @@ function formatSubViewerTimestamp(
   const minutes = Math.floor((rounded % 3_600_000) / 60_000);
   const seconds = Math.floor((rounded % 60_000) / 1000);
   const milliseconds = rounded % 1000;
-  const fraction =
-    precision === 2 ? Math.round(milliseconds / 10) : milliseconds;
+  const fraction = precision === 2 ? Math.round(milliseconds / 10) : milliseconds;
 
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}${separator}${pad(
     fraction,
@@ -495,7 +493,7 @@ function shiftSub(text: string, offsetMs: number, fps: number): ShiftResult {
     text,
     timingCount: 0,
     error:
-      'Acest .sub nu pare un format text MicroDVD/SubViewer. Fișierele VobSub .sub/.idx bazate pe imagini nu pot fi resincronizate aici.',
+      'Acest .sub nu pare MicroDVD sau SubViewer text. Fișierele VobSub .sub/.idx bazate pe imagini nu pot fi resincronizate aici.',
   };
 }
 
@@ -518,7 +516,11 @@ function shiftSubtitleText(
     case 'sub':
       return shiftSub(text, offsetMs, fps);
     default:
-      return { text, timingCount: 0, error: 'Format neacceptat pentru resync.' };
+      return {
+        text,
+        timingCount: 0,
+        error: 'Format neacceptat pentru resync.',
+      };
   }
 }
 
@@ -540,6 +542,7 @@ function uniqueArchiveName(name: string, used: Set<string>) {
 
   let index = 2;
   let candidate = `${base} (${index})${ext}`;
+
   while (used.has(candidate)) {
     index += 1;
     candidate = `${base} (${index})${ext}`;
@@ -552,18 +555,14 @@ function uniqueArchiveName(name: string, used: Set<string>) {
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
+
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
 
-function fileSizeError(file: File) {
-  return file.size > MAX_FILE_SIZE
-    ? 'Fișierul depășește limita de siguranță de 50 MB.'
-    : null;
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export default function App() {
@@ -577,7 +576,7 @@ export default function App() {
 
   const [resyncItems, setResyncItems] = useState<ResyncItem[]>([]);
   const [offsetInput, setOffsetInput] = useState('0');
-  const [fpsInput, setFpsInput] = useState('25');
+  const [fpsInput, setFpsInput] = useState('23.976');
   const [resyncMessage, setResyncMessage] = useState('');
 
   const convertedCount = useMemo(
@@ -605,11 +604,13 @@ export default function App() {
     const valid = selected.filter((file) =>
       ACCEPTED_EXTENSIONS.has(extensionOf(file.name)),
     );
+    const rejected = selected.filter(
+      (file) => !ACCEPTED_EXTENSIONS.has(extensionOf(file.name)),
+    );
 
     const newItems = await Promise.all(
       valid.map(async (file): Promise<SubtitleItem> => {
-        const sizeError = fileSizeError(file);
-        if (sizeError) {
+        if (file.size > MAX_FILE_SIZE) {
           return {
             id: `${file.name}-${Math.random()}`,
             file,
@@ -618,13 +619,14 @@ export default function App() {
             encoding: 'Necunoscut',
             text: '',
             status: 'error',
-            error: sizeError,
+            error: 'Fișierul depășește limita de 50 MB.',
           };
         }
 
         try {
           const buffer = await file.arrayBuffer();
-          const result = detectAndDecode(new Uint8Array(buffer));
+          const bytes = new Uint8Array(buffer);
+          const result = detectAndDecode(bytes);
 
           if (isProbablyBinaryText(result.text)) {
             return {
@@ -635,8 +637,7 @@ export default function App() {
               encoding: result.encoding,
               text: '',
               status: 'error',
-              error:
-                'Fișierul pare binar (de exemplu VobSub .sub/.idx) și nu poate fi procesat ca subtitrare text.',
+              error: 'Fișierul pare binar și nu este o subtitrare text compatibilă.',
             };
           }
 
@@ -666,6 +667,21 @@ export default function App() {
       }),
     );
 
+    if (rejected.length) {
+      const rejectedItems: SubtitleItem[] = rejected.map((file) => ({
+        id: `${file.name}-${Math.random()}`,
+        file,
+        name: file.name,
+        extension: extensionOf(file.name),
+        encoding: 'Necunoscut',
+        text: '',
+        status: 'error',
+        error: 'Format neacceptat.',
+      }));
+      setItems((current) => [...current, ...newItems, ...rejectedItems]);
+      return;
+    }
+
     setItems((current) => [...current, ...newItems]);
   }
 
@@ -684,8 +700,8 @@ export default function App() {
 
     const newItems = await Promise.all(
       valid.map(async (file): Promise<ResyncItem> => {
-        const sizeError = fileSizeError(file);
-        if (sizeError) {
+        if (file.size > MAX_FILE_SIZE) {
+          const error = 'Fișierul depășește limita de 50 MB.';
           return {
             id: `${file.name}-${Math.random()}`,
             file,
@@ -693,8 +709,8 @@ export default function App() {
             extension: extensionOf(file.name),
             encoding: 'Necunoscut',
             text: '',
-            readError: sizeError,
-            error: sizeError,
+            readError: error,
+            error,
           };
         }
 
@@ -858,41 +874,41 @@ export default function App() {
     let successCount = 0;
     let failureCount = 0;
 
-    const nextItems = resyncItems.map((item) => {
-      if (item.readError) {
-        failureCount += 1;
-        return item;
-      }
+    setResyncItems((current) =>
+      current.map((item) => {
+        if (item.readError) {
+          failureCount += 1;
+          return item;
+        }
 
-      const result = shiftSubtitleText(
-        item.text,
-        item.extension,
-        offset,
-        fps,
-      );
+        const result = shiftSubtitleText(
+          item.text,
+          item.extension,
+          offset,
+          fps,
+        );
 
-      if (result.error || result.timingCount === 0) {
-        failureCount += 1;
+        if (result.error || result.timingCount === 0) {
+          failureCount += 1;
+          return {
+            ...item,
+            shiftedText: undefined,
+            timingCount: undefined,
+            error:
+              result.error ??
+              'Nu am găsit marcaje de timp compatibile în acest fișier.',
+          };
+        }
+
+        successCount += 1;
         return {
           ...item,
-          shiftedText: undefined,
-          timingCount: undefined,
-          error:
-            result.error ??
-            'Nu am găsit marcaje de timp compatibile în acest fișier.',
+          shiftedText: result.text,
+          timingCount: result.timingCount,
+          error: undefined,
         };
-      }
-
-      successCount += 1;
-      return {
-        ...item,
-        shiftedText: result.text,
-        timingCount: result.timingCount,
-        error: undefined,
-      };
-    });
-
-    setResyncItems(nextItems);
+      }),
+    );
 
     if (successCount > 0) {
       setResyncMessage(
@@ -1173,7 +1189,8 @@ export default function App() {
             <div className="offsetHeader">
               <div>
                 <h2>Offset</h2>
-                <span>+ = mai târziu · − = mai devreme</span>
+                <span>+ = mai târziu</span>
+                <span>− = mai devreme</span>
               </div>
               <strong>1 secundă = 1000 ms</strong>
             </div>
@@ -1229,7 +1246,14 @@ export default function App() {
             </button>
 
             {resyncMessage && (
-              <div className="resyncMessage" role="status">
+              <div
+                className={`resyncMessage ${
+                  resyncMessage.startsWith('Offset aplicat:')
+                    ? 'success'
+                    : ''
+                }`}
+                role="status"
+              >
                 {resyncMessage}
               </div>
             )}
@@ -1325,12 +1349,11 @@ export default function App() {
             </section>
           )}
 
-          <section className="resyncHint">
-            SRT și VTT păstrează precizia la milisecundă. ASS/SSA și
-            unele SUB au precizie de 10 ms. Pentru .sub MicroDVD offsetul
-            este convertit în cadre folosind FPS-ul subtitrării sau
-            valoarea aleasă. Timpii negativi sunt limitați la 0.
-          </section>
+          <div className="resyncHint">
+            Pentru .sub MicroDVD, offsetul în ms este convertit în cadre.
+            Fișierele .sub/.idx VobSub și .sup sunt bazate pe imagini și nu
+            sunt incluse.
+          </div>
         </>
       )}
 
@@ -1376,13 +1399,16 @@ export default function App() {
       </section>
 
       <footer>
-        SubUTF8 · pentru subtitrări text. Fișierele .sub/.idx și .sup
-        bazate pe imagini necesită OCR și nu sunt incluse.
+        SubUTF8 · pentru subtitrări text. Fișierele .sub/.idx și .sup bazate
+        pe imagini necesită OCR și nu sunt incluse.
       </footer>
 
       {preview && (
         <div className="modal" onClick={() => setPreview(null)}>
-          <div className="sheet" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="sheet"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="grab" />
             <div className="sectionTitle">
               <div>
