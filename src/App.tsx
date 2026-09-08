@@ -184,21 +184,14 @@ function repairRomanianCharacters(text: string) {
   return result;
 }
 
-function convertItem(
-  item: SubtitleItem,
-  repairRomanian: boolean,
-): SubtitleItem {
+function convertItem(item: SubtitleItem): SubtitleItem {
   if (item.status === 'error') {
     return item;
   }
 
-  const convertedText = repairRomanian
-    ? repairRomanianCharacters(item.text)
-    : item.text;
-
   return {
     ...item,
-    convertedText,
+    convertedText: repairRomanianCharacters(item.text),
     status: 'converted',
   };
 }
@@ -222,8 +215,6 @@ export default function App() {
 
   const [items, setItems] = useState<SubtitleItem[]>([]);
   const [autoConvert, setAutoConvert] = useState(true);
-  const [repairRomanian, setRepairRomanian] =
-    useState(true);
 
   const [previewItem, setPreviewItem] =
     useState<SubtitleItem | null>(null);
@@ -262,7 +253,7 @@ export default function App() {
           };
 
           return autoConvert
-            ? convertItem(item, repairRomanian)
+            ? convertItem(item)
             : item;
         } catch {
           return {
@@ -284,9 +275,7 @@ export default function App() {
 
   function convertAll() {
     setItems((current) =>
-      current.map((item) =>
-        convertItem(item, repairRomanian),
-      ),
+      current.map((item) => convertItem(item)),
     );
   }
 
@@ -297,7 +286,7 @@ export default function App() {
       setItems((current) =>
         current.map((item) =>
           item.status === 'ready'
-            ? convertItem(item, repairRomanian)
+            ? convertItem(item)
             : item,
         ),
       );
@@ -404,38 +393,6 @@ export default function App() {
           .srt .sub .ass .ssa .vtt .smi .txt · poți
           selecta mai multe fișiere
         </p>
-
-        <label
-          className="toggle"
-          style={{
-            maxWidth: 430,
-            margin: '0 auto 18px',
-            textAlign: 'left',
-          }}
-        >
-          <div>
-            <strong>
-              Conversie automată în UTF-8
-            </strong>
-
-            <span>
-              Convertește automat imediat după selectarea
-              fișierelor.
-            </span>
-          </div>
-
-          <input
-            type="checkbox"
-            checked={autoConvert}
-            onChange={(event) =>
-              handleAutoConvertChange(
-                event.target.checked,
-              )
-            }
-          />
-
-          <i />
-        </label>
 
         <button
           className="primary filePickerButton"
@@ -546,20 +503,20 @@ export default function App() {
             <label className="toggle">
               <div>
                 <strong>
-                  Repară diacritice românești
+                  Conversie automată + reparare diacritice
                 </strong>
 
                 <span>
-                  Repară automat caracterele românești
-                  afișate greșit.
+                  Convertește automat în UTF-8 și repară
+                  caracterele românești afișate greșit.
                 </span>
               </div>
 
               <input
                 type="checkbox"
-                checked={repairRomanian}
+                checked={autoConvert}
                 onChange={(event) =>
-                  setRepairRomanian(
+                  handleAutoConvertChange(
                     event.target.checked,
                   )
                 }
