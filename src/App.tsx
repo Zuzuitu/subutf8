@@ -42,6 +42,8 @@ type PreviewState = {
 
 const ACCEPTED = '.srt,.sub,.ass,.ssa,.vtt,.smi,.txt';
 const RESYNC_ACCEPTED = '.srt,.sub,.ass,.ssa,.vtt,.smi';
+const MAX_OFFSET_MS = 86_400_000;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const ACCEPTED_EXTENSIONS = new Set([
   'srt',
@@ -62,8 +64,6 @@ const RESYNC_EXTENSIONS = new Set([
   'smi',
 ]);
 
-const MAX_OFFSET_MS = 86_400_000;
-
 function extensionOf(name: string) {
   const parts = name.split('.');
   return parts.length > 1 ? parts.pop()!.toLowerCase() : 'txt';
@@ -80,6 +80,27 @@ function utf8IsValid(bytes: Uint8Array) {
   } catch {
     return false;
   }
+}
+
+function detectUtf16WithoutBom(bytes: Uint8Array) {
+  const sampleLength = Math.min(bytes.length - (bytes.length % 2), 4096);
+  if (sampleLength < 8) return null;
+
+  let evenZeros = 0;
+  let oddZeros = 0;
+  const pairs = sampleLength / 2;
+
+  for (let i = 0; i < sampleLength; i += 2) {
+    if (bytes[i] === 0) evenZeros += 1;
+    if (bytes[i + 1] === 0) oddZeros += 1;
+  }
+
+  const evenRatio = evenZeros / pairs;
+  const oddRatio = oddZeros / pairs;
+
+  if (oddRatio > 0.3 && evenRatio < 0.1) return 'utf-16le';
+  if (evenRatio > 0.3 && oddRatio < 0.1) return 'utf-16be';
+  return null;
 }
 
 function textScore(text: string) {
@@ -133,6 +154,14 @@ function detectAndDecode(bytes: Uint8Array) {
     };
   }
 
+  const utf16WithoutBom = detectUtf16WithoutBom(bytes);
+  if (utf16WithoutBom) {
+    return {
+      encoding: utf16WithoutBom === 'utf-16le' ? 'UTF-16LE' : 'UTF-16BE',
+      text: decode(bytes, utf16WithoutBom),
+    };
+  }
+
   if (utf8IsValid(bytes)) {
     return {
       encoding: 'UTF-8',
@@ -175,6 +204,15 @@ function detectAndDecode(bytes: Uint8Array) {
   );
 }
 
+function isProbablyBinaryText(text: string) {
+  if (!text) return false;
+
+  const controls =
+    text.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g)?.length ?? 0;
+
+  return controls > Math.max(8, Math.floor(text.length * 0.02));
+}
+
 function repairRomanianCharacters(text: string) {
   const replacements: Array<[string, string]> = [
     ['ÅŸ', 'ș'],
@@ -194,11 +232,9 @@ function repairRomanianCharacters(text: string) {
   ];
 
   let result = text;
-
   for (const [bad, good] of replacements) {
     result = result.split(bad).join(good);
   }
-
   return result;
 }
 
@@ -240,7 +276,6 @@ function formatSrtTimestamp(value: number) {
   const minutes = Math.floor((ms % 3_600_000) / 60_000);
   const seconds = Math.floor((ms % 60_000) / 1000);
   const milliseconds = ms % 1000;
-
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)},${pad(milliseconds, 3)}`;
 }
 
@@ -254,7 +289,6 @@ function formatVttTimestamp(value: number, forceHours: boolean) {
   if (forceHours || hours > 0) {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds, 3)}`;
   }
-
   return `${pad(minutes)}:${pad(seconds)}.${pad(milliseconds, 3)}`;
 }
 
@@ -264,18 +298,42 @@ function formatAssTimestamp(value: number) {
   const minutes = Math.floor((centisecondsTotal % 360_000) / 6000);
   const seconds = Math.floor((centisecondsTotal % 6000) / 100);
   const centiseconds = centisecondsTotal % 100;
-
   return `${hours}:${pad(minutes)}:${pad(seconds)}.${pad(centiseconds)}`;
+}
+
+function formatSubViewerTimestamp(
+  value: number,
+  precision: number,
+  separator: string,
+) {
+  const unit = precision === 2 ? 10 : 1;
+  const rounded = Math.max(0, Math.round(value / unit) * unit);
+  const hours = Math.floor(rounded / 3_600_000);
+  const minutes = Math.floor((rounded % 3_600_000) / 60_000);
+  const seconds = Math.floor((rounded % 60_000) / 1000);
+  const milliseconds = rounded % 1000;
+  const fraction =
+    precision === 2 ? Math.round(milliseconds / 10) : milliseconds;
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}${separator}${pad(
+    fraction,
+    precision,
+  )}`;
 }
 
 function shiftSrt(text: string, offsetMs: number): ShiftResult {
   let timingCount = 0;
+
   const shifted = text.replace(
-    /(\d{1,3}):([0-5]\d):([0-5]\d),(\d{3})/g,
-    (_match, h, m, s, ms) => {
-      timingCount += 1;
-      const original = timestampToMs(+h, +m, +s, +ms);
-      return formatSrtTimestamp(shiftedMs(original, offsetMs));
+    /^(\s*)(\d+):([0-5]\d):([0-5]\d)[,.](\d{3})(\s*-->\s*)(\d+):([0-5]\d):([0-5]\d)[,.](\d{3})([^\r\n]*)$/gm,
+    (_match, lead, sh, sm, ss, sms, arrow, eh, em, es, ems, suffix) => {
+      timingCount += 2;
+      const start = timestampToMs(+sh, +sm, +ss, +sms);
+      const end = timestampToMs(+eh, +em, +es, +ems);
+
+      return `${lead}${formatSrtTimestamp(
+        shiftedMs(start, offsetMs),
+      )}${arrow}${formatSrtTimestamp(shiftedMs(end, offsetMs))}${suffix}`;
     },
   );
 
@@ -284,16 +342,23 @@ function shiftSrt(text: string, offsetMs: number): ShiftResult {
 
 function shiftVtt(text: string, offsetMs: number): ShiftResult {
   let timingCount = 0;
+
   const shifted = text.replace(
-    /(?:(\d{1,3}):)?([0-5]?\d):([0-5]\d)\.(\d{3})/g,
-    (_match, h, m, s, ms) => {
-      timingCount += 1;
-      const hasHours = h !== undefined;
-      const original = timestampToMs(hasHours ? +h : 0, +m, +s, +ms);
-      return formatVttTimestamp(
-        shiftedMs(original, offsetMs),
-        hasHours,
-      );
+    /^(\s*)(?:(\d+):)?([0-5]?\d):([0-5]\d)\.(\d{3})(\s+-->\s+)(?:(\d+):)?([0-5]?\d):([0-5]\d)\.(\d{3})([^\r\n]*)$/gm,
+    (_match, lead, sh, sm, ss, sms, arrow, eh, em, es, ems, suffix) => {
+      timingCount += 2;
+      const startHasHours = sh !== undefined;
+      const endHasHours = eh !== undefined;
+      const start = timestampToMs(startHasHours ? +sh : 0, +sm, +ss, +sms);
+      const end = timestampToMs(endHasHours ? +eh : 0, +em, +es, +ems);
+
+      return `${lead}${formatVttTimestamp(
+        shiftedMs(start, offsetMs),
+        startHasHours,
+      )}${arrow}${formatVttTimestamp(
+        shiftedMs(end, offsetMs),
+        endHasHours,
+      )}${suffix}`;
     },
   );
 
@@ -302,6 +367,7 @@ function shiftVtt(text: string, offsetMs: number): ShiftResult {
 
 function shiftAss(text: string, offsetMs: number): ShiftResult {
   let timingCount = 0;
+
   const shifted = text.replace(
     /^(Dialogue:\s*[^,\r\n]*,)(\d+):([0-5]\d):([0-5]\d)\.(\d{2}),(\d+):([0-5]\d):([0-5]\d)\.(\d{2})(,.*)$/gim,
     (_match, prefix, sh, sm, ss, sc, eh, em, es, ec, suffix) => {
@@ -320,22 +386,38 @@ function shiftAss(text: string, offsetMs: number): ShiftResult {
 
 function shiftSmi(text: string, offsetMs: number): ShiftResult {
   let timingCount = 0;
-  const shifted = text.replace(
-    /(\bSTART\s*=\s*["']?)(\d+)(["']?)/gi,
-    (_match, prefix, value, suffix) => {
-      timingCount += 1;
-      return `${prefix}${shiftedMs(+value, offsetMs)}${suffix}`;
-    },
-  );
+
+  const shifted = text.replace(/<SYNC\b[^>]*>/gi, (tag) => {
+    let changed = false;
+    const nextTag = tag.replace(
+      /(\bSTART\s*=\s*["']?)(\d+)(["']?)/i,
+      (_match, prefix, value, suffix) => {
+        changed = true;
+        return `${prefix}${shiftedMs(+value, offsetMs)}${suffix}`;
+      },
+    );
+
+    if (changed) timingCount += 1;
+    return nextTag;
+  });
 
   return { text: shifted, timingCount };
+}
+
+function embeddedMicroDvdFps(text: string) {
+  const match = text.match(/^\{1\}\{1\}\s*(\d+(?:[.,]\d+)?)\s*$/m);
+  if (!match) return null;
+  const value = Number(match[1].replace(',', '.'));
+  return Number.isFinite(value) && value > 0 && value <= 240 ? value : null;
 }
 
 function shiftMicroDvd(
   text: string,
   offsetMs: number,
-  fps: number,
+  fallbackFps: number,
 ): ShiftResult {
+  const fps = embeddedMicroDvdFps(text) ?? fallbackFps;
+
   if (!Number.isFinite(fps) || fps <= 0 || fps > 240) {
     return {
       text,
@@ -348,25 +430,73 @@ function shiftMicroDvd(
   let timingCount = 0;
 
   const shifted = text.replace(
-    /^\{(\d+)\}\{(\d+)\}/gm,
-    (_match, start, end) => {
+    /^\{(\d+)\}\{(\d+)\}([^\r\n]*)$/gm,
+    (fullLine, start, end, tail) => {
+      const isFpsMetadata =
+        +start === 1 &&
+        +end === 1 &&
+        /^\s*\d+(?:[.,]\d+)?\s*$/.test(tail);
+
+      if (isFpsMetadata) return fullLine;
+
       timingCount += 1;
       const nextStart = Math.max(0, +start + frameOffset);
       const nextEnd = Math.max(0, +end + frameOffset);
-      return `{${nextStart}}{${nextEnd}}`;
+      return `{${nextStart}}{${nextEnd}}${tail}`;
     },
   );
 
-  if (!timingCount) {
-    return {
-      text,
-      timingCount: 0,
-      error:
-        'Acest .sub nu pare MicroDVD text. Fișierele VobSub .sub/.idx bazate pe imagini nu pot fi resincronizate aici.',
-    };
-  }
+  return { text: shifted, timingCount };
+}
+
+function shiftSubViewer(text: string, offsetMs: number): ShiftResult {
+  let timingCount = 0;
+
+  const shifted = text.replace(
+    /^(\s*)(\d+):([0-5]\d):([0-5]\d)([.,])(\d{2,3}),(\d+):([0-5]\d):([0-5]\d)([.,])(\d{2,3})([^\r\n]*)$/gm,
+    (_match, lead, sh, sm, ss, sSep, sFrac, eh, em, es, eSep, eFrac, suffix) => {
+      timingCount += 2;
+      const startPrecision = sFrac.length;
+      const endPrecision = eFrac.length;
+      const startMs = startPrecision === 2 ? +sFrac * 10 : +sFrac;
+      const endMs = endPrecision === 2 ? +eFrac * 10 : +eFrac;
+      const start = timestampToMs(+sh, +sm, +ss, startMs);
+      const end = timestampToMs(+eh, +em, +es, endMs);
+
+      return `${lead}${formatSubViewerTimestamp(
+        shiftedMs(start, offsetMs),
+        startPrecision,
+        sSep,
+      )},${formatSubViewerTimestamp(
+        shiftedMs(end, offsetMs),
+        endPrecision,
+        eSep,
+      )}${suffix}`;
+    },
+  );
 
   return { text: shifted, timingCount };
+}
+
+function shiftSub(text: string, offsetMs: number, fps: number): ShiftResult {
+  if (/^\{\d+\}\{\d+\}/m.test(text)) {
+    return shiftMicroDvd(text, offsetMs, fps);
+  }
+
+  if (
+    /^\s*\d+:[0-5]\d:[0-5]\d[.,]\d{2,3},\d+:[0-5]\d:[0-5]\d[.,]\d{2,3}/m.test(
+      text,
+    )
+  ) {
+    return shiftSubViewer(text, offsetMs);
+  }
+
+  return {
+    text,
+    timingCount: 0,
+    error:
+      'Acest .sub nu pare un format text MicroDVD/SubViewer. Fișierele VobSub .sub/.idx bazate pe imagini nu pot fi resincronizate aici.',
+  };
 }
 
 function shiftSubtitleText(
@@ -386,13 +516,9 @@ function shiftSubtitleText(
     case 'smi':
       return shiftSmi(text, offsetMs);
     case 'sub':
-      return shiftMicroDvd(text, offsetMs, fps);
+      return shiftSub(text, offsetMs, fps);
     default:
-      return {
-        text,
-        timingCount: 0,
-        error: 'Format neacceptat pentru resync.',
-      };
+      return { text, timingCount: 0, error: 'Format neacceptat pentru resync.' };
   }
 }
 
@@ -414,7 +540,6 @@ function uniqueArchiveName(name: string, used: Set<string>) {
 
   let index = 2;
   let candidate = `${base} (${index})${ext}`;
-
   while (used.has(candidate)) {
     index += 1;
     candidate = `${base} (${index})${ext}`;
@@ -427,15 +552,18 @@ function uniqueArchiveName(name: string, used: Set<string>) {
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-
   a.href = url;
   a.download = filename;
-
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
 
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+function fileSizeError(file: File) {
+  return file.size > MAX_FILE_SIZE
+    ? 'Fișierul depășește limita de siguranță de 50 MB.'
+    : null;
 }
 
 export default function App() {
@@ -480,10 +608,37 @@ export default function App() {
 
     const newItems = await Promise.all(
       valid.map(async (file): Promise<SubtitleItem> => {
+        const sizeError = fileSizeError(file);
+        if (sizeError) {
+          return {
+            id: `${file.name}-${Math.random()}`,
+            file,
+            name: file.name,
+            extension: extensionOf(file.name),
+            encoding: 'Necunoscut',
+            text: '',
+            status: 'error',
+            error: sizeError,
+          };
+        }
+
         try {
           const buffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          const result = detectAndDecode(bytes);
+          const result = detectAndDecode(new Uint8Array(buffer));
+
+          if (isProbablyBinaryText(result.text)) {
+            return {
+              id: `${file.name}-${Math.random()}`,
+              file,
+              name: file.name,
+              extension: extensionOf(file.name),
+              encoding: result.encoding,
+              text: '',
+              status: 'error',
+              error:
+                'Fișierul pare binar (de exemplu VobSub .sub/.idx) și nu poate fi procesat ca subtitrare text.',
+            };
+          }
 
           const item: SubtitleItem = {
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
@@ -529,10 +684,38 @@ export default function App() {
 
     const newItems = await Promise.all(
       valid.map(async (file): Promise<ResyncItem> => {
+        const sizeError = fileSizeError(file);
+        if (sizeError) {
+          return {
+            id: `${file.name}-${Math.random()}`,
+            file,
+            name: file.name,
+            extension: extensionOf(file.name),
+            encoding: 'Necunoscut',
+            text: '',
+            readError: sizeError,
+            error: sizeError,
+          };
+        }
+
         try {
           const buffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          const result = detectAndDecode(bytes);
+          const result = detectAndDecode(new Uint8Array(buffer));
+
+          if (isProbablyBinaryText(result.text)) {
+            const error =
+              'Fișierul pare binar. VobSub .sub/.idx bazat pe imagini nu este compatibil cu resync text.';
+            return {
+              id: `${file.name}-${Math.random()}`,
+              file,
+              name: file.name,
+              extension: extensionOf(file.name),
+              encoding: result.encoding,
+              text: '',
+              readError: error,
+              error,
+            };
+          }
 
           return {
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
@@ -567,7 +750,6 @@ export default function App() {
 
   function handleAutoConvertChange(enabled: boolean) {
     setAutoConvert(enabled);
-
     if (enabled) {
       setItems((current) =>
         current.map((item) =>
@@ -589,11 +771,10 @@ export default function App() {
   function downloadItem(item: SubtitleItem) {
     const text = item.convertedText ?? item.text;
     const bytes = new TextEncoder().encode(text);
-    const blob = new Blob([bytes], {
-      type: 'text/plain;charset=utf-8',
-    });
-
-    downloadBlob(blob, item.name);
+    downloadBlob(
+      new Blob([bytes], { type: 'text/plain;charset=utf-8' }),
+      item.name,
+    );
   }
 
   function exportZip() {
@@ -610,9 +791,12 @@ export default function App() {
       );
     });
 
-    const zipped = zipSync(archive, { level: 6 });
-    const blob = new Blob([zipped], { type: 'application/zip' });
-    downloadBlob(blob, 'SubUTF8.zip');
+    downloadBlob(
+      new Blob([zipSync(archive, { level: 6 })], {
+        type: 'application/zip',
+      }),
+      'SubUTF8.zip',
+    );
   }
 
   function resetResyncResults() {
@@ -648,6 +832,11 @@ export default function App() {
   }
 
   function applyResync() {
+    if (offsetInput.trim() === '') {
+      setResyncMessage('Introdu offsetul în milisecunde.');
+      return;
+    }
+
     const offset = Number(offsetInput);
     const fps = Number(fpsInput);
 
@@ -667,44 +856,53 @@ export default function App() {
     }
 
     let successCount = 0;
+    let failureCount = 0;
 
-    setResyncItems((current) =>
-      current.map((item) => {
-        if (item.readError) return item;
+    const nextItems = resyncItems.map((item) => {
+      if (item.readError) {
+        failureCount += 1;
+        return item;
+      }
 
-        const result = shiftSubtitleText(
-          item.text,
-          item.extension,
-          offset,
-          fps,
-        );
+      const result = shiftSubtitleText(
+        item.text,
+        item.extension,
+        offset,
+        fps,
+      );
 
-        if (result.error || result.timingCount === 0) {
-          return {
-            ...item,
-            shiftedText: undefined,
-            timingCount: undefined,
-            error:
-              result.error ??
-              'Nu am găsit marcaje de timp compatibile în acest fișier.',
-          };
-        }
-
-        successCount += 1;
+      if (result.error || result.timingCount === 0) {
+        failureCount += 1;
         return {
           ...item,
-          shiftedText: result.text,
-          timingCount: result.timingCount,
-          error: undefined,
+          shiftedText: undefined,
+          timingCount: undefined,
+          error:
+            result.error ??
+            'Nu am găsit marcaje de timp compatibile în acest fișier.',
         };
-      }),
-    );
+      }
 
-    setResyncMessage(
-      successCount > 0
-        ? `Offset aplicat: ${offset > 0 ? '+' : ''}${offset} ms.`
-        : '',
-    );
+      successCount += 1;
+      return {
+        ...item,
+        shiftedText: result.text,
+        timingCount: result.timingCount,
+        error: undefined,
+      };
+    });
+
+    setResyncItems(nextItems);
+
+    if (successCount > 0) {
+      setResyncMessage(
+        `Offset aplicat: ${offset > 0 ? '+' : ''}${offset} ms${
+          failureCount ? ` · ${failureCount} fișier(e) cu eroare` : ''
+        }.`,
+      );
+    } else {
+      setResyncMessage('Nu am putut resincroniza fișierele selectate.');
+    }
   }
 
   function removeResyncItem(id: string) {
@@ -721,12 +919,11 @@ export default function App() {
 
   function downloadResyncItem(item: ResyncItem) {
     if (item.shiftedText === undefined) return;
-
     const bytes = new TextEncoder().encode(item.shiftedText);
-    const blob = new Blob([bytes], {
-      type: 'text/plain;charset=utf-8',
-    });
-    downloadBlob(blob, item.name);
+    downloadBlob(
+      new Blob([bytes], { type: 'text/plain;charset=utf-8' }),
+      item.name,
+    );
   }
 
   function exportResyncZip() {
@@ -743,9 +940,12 @@ export default function App() {
       archive[name] = new TextEncoder().encode(item.shiftedText!);
     });
 
-    const zipped = zipSync(archive, { level: 6 });
-    const blob = new Blob([zipped], { type: 'application/zip' });
-    downloadBlob(blob, 'SubUTF8-Resync.zip');
+    downloadBlob(
+      new Blob([zipSync(archive, { level: 6 })], {
+        type: 'application/zip',
+      }),
+      'SubUTF8-Resync.zip',
+    );
   }
 
   return (
@@ -757,20 +957,17 @@ export default function App() {
             alt="SubUTF8 by alexlab.media"
             className="brandLogo"
           />
-
           <p className="heroDescription">
-            Convertește subtitrările în UTF-8, repară
-            caracterele românești afișate greșit și
-            procesează mai multe fișiere direct pe dispozitiv.
+            Convertește subtitrările în UTF-8, repară caracterele
+            românești afișate greșit și procesează mai multe fișiere
+            direct pe dispozitiv.
           </p>
-
           <p className="heroDescriptionEn">
-            Convert subtitle files to UTF-8, repair broken
-            Romanian characters, and process multiple files
-            instantly — entirely on your device.
+            Convert subtitle files to UTF-8, repair broken Romanian
+            characters, and process multiple files instantly — entirely
+            on your device.
           </p>
         </div>
-
         <div className="privacy">◉ Procesare locală</div>
       </header>
 
@@ -820,8 +1017,8 @@ export default function App() {
             <div className="icon">↥</div>
             <h2>Importă subtitrări</h2>
             <p>
-              .srt .sub .ass .ssa .vtt .smi .txt · poți selecta
-              mai multe fișiere
+              .srt .sub .ass .ssa .vtt .smi .txt · poți selecta mai
+              multe fișiere
             </p>
 
             <button
@@ -855,7 +1052,6 @@ export default function App() {
                       {items.length === 1 ? 'selectat' : 'selectate'}
                     </span>
                   </div>
-
                   <button className="textButton" onClick={clearAll}>
                     Șterge tot
                   </button>
@@ -867,12 +1063,12 @@ export default function App() {
                       <div className="fileIcon">
                         {item.extension.toUpperCase()}
                       </div>
-
                       <div className="meta">
                         <strong>{item.name}</strong>
-                        <span>Detectat: {item.encoding}</span>
+                        <span title={item.error}>
+                          {item.error ?? `Detectat: ${item.encoding}`}
+                        </span>
                       </div>
-
                       <div className={`status ${item.status}`}>
                         {item.status === 'converted'
                           ? `${item.encoding} → UTF-8 ✓`
@@ -880,7 +1076,6 @@ export default function App() {
                             ? '!'
                             : 'Pregătit'}
                       </div>
-
                       <button
                         className="round"
                         aria-label={`Șterge ${item.name}`}
@@ -902,7 +1097,6 @@ export default function App() {
                           >
                             Preview
                           </button>
-
                           <button
                             className="small"
                             onClick={() => downloadItem(item)}
@@ -919,16 +1113,14 @@ export default function App() {
               <section className="card controls">
                 <div className="fileNameNotice">
                   <strong>Atenție:</strong> fișierele convertite vor
-                  păstra același nume ca fișierele originale. Verifică
-                  să nu le suprascrii accidental atunci când le salvezi.
+                  păstra același nume ca fișierele originale. Verifică să
+                  nu le suprascrii accidental atunci când le salvezi.
                 </div>
-
                 {!autoConvert && hasReadyItems && (
                   <button className="primary wide" onClick={convertAll}>
                     Convertește toate în UTF-8
                   </button>
                 )}
-
                 {convertedCount > 1 && (
                   <button className="secondary wide" onClick={exportZip}>
                     Descarcă toate ca ZIP
@@ -956,14 +1148,12 @@ export default function App() {
               Mută toate marcajele de timp înainte sau înapoi cu un
               offset în milisecunde.
             </p>
-
             <button
               className="primary filePickerButton"
               onClick={() => resyncInputRef.current?.click()}
             >
               Alege subtitrări
             </button>
-
             <input
               ref={resyncInputRef}
               type="file"
@@ -1055,7 +1245,6 @@ export default function App() {
                     {resyncItems.length === 1 ? 'selectat' : 'selectate'}
                   </span>
                 </div>
-
                 <button className="textButton" onClick={clearResync}>
                   Șterge tot
                 </button>
@@ -1067,10 +1256,12 @@ export default function App() {
                     <div className="fileIcon">
                       {item.extension.toUpperCase()}
                     </div>
-
                     <div className="meta">
                       <strong>{item.name}</strong>
-                      <span>
+                      <span
+                        className={item.error ? 'resyncErrorText' : ''}
+                        title={item.error}
+                      >
                         {item.error
                           ? item.error
                           : item.shiftedText !== undefined
@@ -1078,7 +1269,6 @@ export default function App() {
                             : `Detectat: ${item.encoding}`}
                       </span>
                     </div>
-
                     <div
                       className={`status ${
                         item.error
@@ -1094,7 +1284,6 @@ export default function App() {
                           ? 'Resync ✓'
                           : 'Pregătit'}
                     </div>
-
                     <button
                       className="round"
                       aria-label={`Șterge ${item.name}`}
@@ -1116,7 +1305,6 @@ export default function App() {
                         >
                           Preview
                         </button>
-
                         <button
                           className="small"
                           onClick={() => downloadResyncItem(item)}
@@ -1130,10 +1318,7 @@ export default function App() {
               </div>
 
               {shiftedCount > 1 && (
-                <button
-                  className="secondary wide"
-                  onClick={exportResyncZip}
-                >
+                <button className="secondary wide" onClick={exportResyncZip}>
                   Descarcă toate ca ZIP
                 </button>
               )}
@@ -1141,10 +1326,10 @@ export default function App() {
           )}
 
           <section className="resyncHint">
-            SRT și VTT păstrează precizia la milisecundă. ASS/SSA au
-            precizie de 10 ms. Pentru .sub MicroDVD offsetul este
-            convertit în cadre folosind FPS-ul ales. Timpii negativi sunt
-            limitați la 0.
+            SRT și VTT păstrează precizia la milisecundă. ASS/SSA și
+            unele SUB au precizie de 10 ms. Pentru .sub MicroDVD offsetul
+            este convertit în cadre folosind FPS-ul subtitrării sau
+            valoarea aleasă. Timpii negativi sunt limitați la 0.
           </section>
         </>
       )}
@@ -1164,16 +1349,13 @@ export default function App() {
             <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
           </svg>
         </div>
-
         <div className="supportContent">
           <div className="supportLabel">Susține SubUTF8</div>
           <h3>Îți este util SubUTF8?</h3>
           <p>
-            Dacă folosești des SubUTF8 și îl consideri util, poți
-            susține proiectul cu orice sumă dorești. Orice apreciere
-            contează.
+            Dacă folosești des SubUTF8 și îl consideri util, poți susține
+            proiectul cu orice sumă dorești. Orice apreciere contează.
           </p>
-
           <a
             className="paypalButton"
             href="https://www.paypal.me/AlexandruCiobanu00"
@@ -1202,18 +1384,15 @@ export default function App() {
         <div className="modal" onClick={() => setPreview(null)}>
           <div className="sheet" onClick={(event) => event.stopPropagation()}>
             <div className="grab" />
-
             <div className="sectionTitle">
               <div>
                 <h2>Preview</h2>
                 <span>{preview.name}</span>
               </div>
-
               <button className="textButton" onClick={() => setPreview(null)}>
                 Închide
               </button>
             </div>
-
             <pre>{preview.text}</pre>
           </div>
         </div>
