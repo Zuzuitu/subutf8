@@ -230,6 +230,21 @@ function repairRomanianCharacters(text: string) {
     ['Ţ', 'Ț'],
   ];
 
+  // Some older Romanian subtitles were decoded once as Latin-1/Windows-1252
+  // and then saved as valid UTF-8. In that case the byte-level encoding looks
+  // correct, but Romanian characters appear as º/þ/ª/Þ/ã/Ã.
+  const hasLegacyRomanianMojibake = /[ºþªÞ]/.test(text);
+  if (hasLegacyRomanianMojibake) {
+    replacements.push(
+      ['ã', 'ă'],
+      ['Ã', 'Ă'],
+      ['º', 'ș'],
+      ['þ', 'ț'],
+      ['ª', 'Ș'],
+      ['Þ', 'Ț'],
+    );
+  }
+
   let result = text;
   for (const [bad, good] of replacements) {
     result = result.split(bad).join(good);
