@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { zipSync } from 'fflate';
 
 type FileStatus = 'ready' | 'converted' | 'error';
@@ -581,9 +581,6 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function App() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const resyncInputRef = useRef<HTMLInputElement>(null);
-
   const [activeTool, setActiveTool] = useState<ActiveTool>('convert');
   const [items, setItems] = useState<SubtitleItem[]>([]);
   const [autoConvert, setAutoConvert] = useState(true);
@@ -1052,24 +1049,25 @@ export default function App() {
               multe fișiere
             </p>
 
-            <button
-              className="primary filePickerButton"
-              onClick={() => inputRef.current?.click()}
-            >
-              Alege fișiere
-            </button>
-
-            <input
-              ref={inputRef}
-              type="file"
-              accept={ACCEPTED}
-              multiple
-              hidden
-              onChange={(event) => {
-                if (event.target.files) addFiles(event.target.files);
-                event.target.value = '';
-              }}
-            />
+            <label className="primary filePickerButton nativeFilePicker">
+              <span>Alege fișiere</span>
+              <input
+                type="file"
+                accept={ACCEPTED}
+                multiple
+                aria-label="Alege fișiere pentru conversie"
+                onClick={(event) => {
+                  event.currentTarget.value = '';
+                }}
+                onChange={(event) => {
+                  const selected = Array.from(
+                    event.currentTarget.files ?? [],
+                  );
+                  event.currentTarget.value = '';
+                  if (selected.length) void addFiles(selected);
+                }}
+              />
+            </label>
           </section>
 
           {items.length > 0 && (
@@ -1179,25 +1177,25 @@ export default function App() {
               Mută toate marcajele de timp înainte sau înapoi cu un
               offset în milisecunde.
             </p>
-            <button
-              className="primary filePickerButton"
-              onClick={() => resyncInputRef.current?.click()}
-            >
-              Alege subtitrări
-            </button>
-            <input
-              ref={resyncInputRef}
-              type="file"
-              accept={RESYNC_ACCEPTED}
-              multiple
-              hidden
-              onChange={(event) => {
-                if (event.target.files) {
-                  addResyncFiles(event.target.files);
-                }
-                event.target.value = '';
-              }}
-            />
+            <label className="primary filePickerButton nativeFilePicker">
+              <span>Alege subtitrări</span>
+              <input
+                type="file"
+                accept={RESYNC_ACCEPTED}
+                multiple
+                aria-label="Alege subtitrări pentru decalare"
+                onClick={(event) => {
+                  event.currentTarget.value = '';
+                }}
+                onChange={(event) => {
+                  const selected = Array.from(
+                    event.currentTarget.files ?? [],
+                  );
+                  event.currentTarget.value = '';
+                  if (selected.length) void addResyncFiles(selected);
+                }}
+              />
+            </label>
           </section>
 
           <section className="card resyncControls">
