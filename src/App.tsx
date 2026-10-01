@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { zipSync } from 'fflate';
 
 type FileStatus = 'ready' | 'converted' | 'error';
@@ -71,6 +71,33 @@ function extensionOf(name: string) {
 
 function decode(bytes: Uint8Array, encoding: string) {
   return new TextDecoder(encoding).decode(bytes);
+}
+
+async function readFileBytes(file: File) {
+  const source = file.slice(0, file.size, file.type);
+
+  try {
+    return new Uint8Array(await source.arrayBuffer());
+  } catch {
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onerror = () => {
+        reject(reader.error ?? new Error('Fișierul nu a putut fi citit.'));
+      };
+
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(new Uint8Array(reader.result));
+          return;
+        }
+
+        reject(new Error('Fișierul nu a putut fi citit.'));
+      };
+
+      reader.readAsArrayBuffer(source);
+    });
+  }
 }
 
 function utf8IsValid(bytes: Uint8Array) {
@@ -581,6 +608,9 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function App() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resyncInputRef = useRef<HTMLInputElement>(null);
+
   const [activeTool, setActiveTool] = useState<ActiveTool>('convert');
   const [items, setItems] = useState<SubtitleItem[]>([]);
   const [autoConvert, setAutoConvert] = useState(true);
@@ -590,6 +620,18 @@ export default function App() {
   const [offsetInput, setOffsetInput] = useState('0');
   const [fpsInput, setFpsInput] = useState('23.976');
   const [resyncMessage, setResyncMessage] = useState('');
+
+  const isIOSStandalone = useMemo(() => {
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    return (
+      isIOS &&
+      (window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true)
+    );
+  }, []);
 
   const convertedCount = useMemo(
     () => items.filter((item) => item.status === 'converted').length,
@@ -636,8 +678,7 @@ export default function App() {
         }
 
         try {
-          const buffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
+          const bytes = await readFileBytes(file);
           const result = detectAndDecode(bytes);
 
           if (isProbablyBinaryText(result.text)) {
@@ -727,8 +768,8 @@ export default function App() {
         }
 
         try {
-          const buffer = await file.arrayBuffer();
-          const result = detectAndDecode(new Uint8Array(buffer));
+          const bytes = await readFileBytes(file);
+          const result = detectAndDecode(bytes);
 
           if (isProbablyBinaryText(result.text)) {
             const error =
@@ -771,6 +812,64 @@ export default function App() {
     setResyncMessage('');
     setResyncItems((current) => [...current, ...newItems]);
   }
+
+  async function consumeConvertInput(input: HTMLInputElement) {
+    if (input.dataset.subutf8Busy === '1') return;
+
+    const selected = Array.from(input.files ?? []);
+    if (!selected.length) return;
+
+    input.dataset.subutf8Busy = '1';
+
+    try {
+      await addFiles(selected);
+    } finally {
+      input.value = '';
+      delete input.dataset.subutf8Busy;
+    }
+  }
+
+  async function consumeResyncInput(input: HTMLInputElement) {
+    if (input.dataset.subutf8Busy === '1') return;
+
+    const selected = Array.from(input.files ?? []);
+    if (!selected.length) return;
+
+    input.dataset.subutf8Busy = '1';
+
+    try {
+      await addResyncFiles(selected);
+    } finally {
+      input.value = '';
+      delete input.dataset.subutf8Busy;
+    }
+  }
+
+  useEffect(() => {
+    const recoverPickerResult = () => {
+      if (document.visibilityState !== 'visible') return;
+
+      window.setTimeout(() => {
+        if (inputRef.current?.files?.length) {
+          void consumeConvertInput(inputRef.current);
+        }
+
+        if (resyncInputRef.current?.files?.length) {
+          void consumeResyncInput(resyncInputRef.current);
+        }
+      }, 80);
+    };
+
+    document.addEventListener('visibilitychange', recoverPickerResult);
+    window.addEventListener('focus', recoverPickerResult);
+    window.addEventListener('pageshow', recoverPickerResult);
+
+    return () => {
+      document.removeEventListener('visibilitychange', recoverPickerResult);
+      window.removeEventListener('focus', recoverPickerResult);
+      window.removeEventListener('pageshow', recoverPickerResult);
+    };
+  }, [autoConvert]);
 
   function convertAll() {
     setItems((current) => current.map((item) => convertItem(item)));
@@ -1052,19 +1151,16 @@ export default function App() {
             <label className="primary filePickerButton nativeFilePicker">
               <span>Alege fișiere</span>
               <input
+                ref={inputRef}
                 type="file"
-                accept={ACCEPTED}
+                accept={isIOSStandalone ? undefined : ACCEPTED}
                 multiple
                 aria-label="Alege fișiere pentru conversie"
-                onClick={(event) => {
-                  event.currentTarget.value = '';
+                onInput={(event) => {
+                  void consumeConvertInput(event.currentTarget);
                 }}
                 onChange={(event) => {
-                  const selected = Array.from(
-                    event.currentTarget.files ?? [],
-                  );
-                  event.currentTarget.value = '';
-                  if (selected.length) void addFiles(selected);
+                  void consumeConvertInput(event.currentTarget);
                 }}
               />
             </label>
@@ -1180,19 +1276,16 @@ export default function App() {
             <label className="primary filePickerButton nativeFilePicker">
               <span>Alege subtitrări</span>
               <input
+                ref={resyncInputRef}
                 type="file"
-                accept={RESYNC_ACCEPTED}
+                accept={isIOSStandalone ? undefined : RESYNC_ACCEPTED}
                 multiple
                 aria-label="Alege subtitrări pentru decalare"
-                onClick={(event) => {
-                  event.currentTarget.value = '';
+                onInput={(event) => {
+                  void consumeResyncInput(event.currentTarget);
                 }}
                 onChange={(event) => {
-                  const selected = Array.from(
-                    event.currentTarget.files ?? [],
-                  );
-                  event.currentTarget.value = '';
-                  if (selected.length) void addResyncFiles(selected);
+                  void consumeResyncInput(event.currentTarget);
                 }}
               />
             </label>
